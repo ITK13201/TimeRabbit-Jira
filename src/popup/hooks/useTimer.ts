@@ -3,9 +3,15 @@ import type { ActiveTimer, ActivityType, JiraTaskMeta } from "@/shared/types";
 import { sendMessage } from "@/shared/messages";
 import { STORAGE_KEYS } from "@/shared/utils/storage";
 
+export interface CurrentTask {
+  taskKey: string;
+  meta: JiraTaskMeta | null;
+}
+
 interface UseTimerResult {
   activeTimer: ActiveTimer | null;
   meta: JiraTaskMeta | null;
+  currentTask: CurrentTask | null;
   loading: boolean;
   startTimer: (taskKey: string, activityType: ActivityType, meta: JiraTaskMeta) => Promise<void>;
   stopTimer: () => Promise<void>;
@@ -14,21 +20,41 @@ interface UseTimerResult {
   refresh: () => void;
 }
 
+async function fetchCurrentTaskFromActiveTab(): Promise<CurrentTask | null> {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (!tab?.id) return null;
+  try {
+    const response = await chrome.tabs.sendMessage(tab.id, { type: "GET_CURRENT_TASK" }) as
+      | { taskKey: string | null; meta: JiraTaskMeta | null }
+      | undefined;
+    if (!response?.taskKey) return null;
+    return { taskKey: response.taskKey, meta: response.meta };
+  } catch {
+    // Jiraページでない場合など content script が存在しないタブではエラーになる
+    return null;
+  }
+}
+
 export function useTimer(): UseTimerResult {
   const [activeTimer, setActiveTimer] = useState<ActiveTimer | null>(null);
   const [meta, setMeta] = useState<JiraTaskMeta | null>(null);
+  const [currentTask, setCurrentTask] = useState<CurrentTask | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchState = useCallback(() => {
-    sendMessage({ type: "GET_STATE" })
-      .then((response) => {
+    Promise.all([
+      sendMessage({ type: "GET_STATE" }),
+      fetchCurrentTaskFromActiveTab(),
+    ])
+      .then(([response, task]) => {
         if (response.type === "STATE") {
           setActiveTimer(response.activeTimer);
           setMeta(response.meta);
         }
+        setCurrentTask(task);
       })
       .catch((err: unknown) => {
-        console.error("[TimeRabbit] GET_STATE error:", err);
+        console.error("[TimeRabbit] fetchState error:", err);
       })
       .finally(() => {
         setLoading(false);
@@ -79,6 +105,7 @@ export function useTimer(): UseTimerResult {
   return {
     activeTimer,
     meta,
+    currentTask,
     loading,
     startTimer,
     stopTimer,

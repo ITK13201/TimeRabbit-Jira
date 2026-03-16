@@ -1,14 +1,17 @@
 import { useEffect, useRef, useState } from "react";
-import type { ActiveTimer, JiraTaskMeta } from "@/shared/types";
+import type { ActiveTimer, ActivityType, JiraTaskMeta } from "@/shared/types";
+import { ACTIVITY_LABELS } from "@/shared/types";
 import { formatDurationClock } from "@/shared/utils/time";
+import { ActivitySelector } from "./ActivitySelector";
 
 interface ActiveTimerCardProps {
   activeTimer: ActiveTimer;
   meta: JiraTaskMeta | null;
   onStop: () => Promise<void>;
+  onSwitchActivity: (activityType: ActivityType) => void;
 }
 
-export function ActiveTimerCard({ activeTimer, meta, onStop }: ActiveTimerCardProps): JSX.Element {
+export function ActiveTimerCard({ activeTimer, meta, onStop, onSwitchActivity }: ActiveTimerCardProps): JSX.Element {
   const [elapsed, setElapsed] = useState(() => Date.now() - activeTimer.startedAt);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -63,6 +66,13 @@ export function ActiveTimerCard({ activeTimer, meta, onStop }: ActiveTimerCardPr
         }}
       >
         {formatDurationClock(elapsed)}
+      </div>
+      <div style={{ marginBottom: "8px" }}>
+        <div style={{ fontSize: "11px", color: "#5e6c84", marginBottom: "4px" }}>アクティビティ変更</div>
+        <ActivitySelector value={activeTimer.activityType} onChange={onSwitchActivity} />
+      </div>
+      <div style={{ fontSize: "11px", color: "#5e6c84", marginBottom: "4px", textAlign: "center" }}>
+        現在: {ACTIVITY_LABELS[activeTimer.activityType]}
       </div>
       <div style={{ display: "flex", justifyContent: "center" }}>
         <button className="btn-danger" onClick={handleStop}>

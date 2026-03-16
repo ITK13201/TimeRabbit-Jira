@@ -1,27 +1,48 @@
+import type { JiraTaskMeta } from "@/shared/types";
 import { JiraPageDetector } from "./JiraPageDetector";
 import { TaskExtractor } from "./TaskExtractor";
-import { FloatingTimer } from "./FloatingTimer";
+
+interface CurrentTaskResponse {
+  taskKey: string | null;
+  meta: JiraTaskMeta | null;
+}
+
+let currentTaskKey: string | null = null;
+let currentMeta: JiraTaskMeta | null = null;
 
 const taskExtractor = new TaskExtractor();
-const floatingTimer = new FloatingTimer();
 
-floatingTimer.mount();
+// Popupからの「現在のタスクを教えて」リクエストに応答
+chrome.runtime.onMessage.addListener(
+  (message: unknown, _sender, sendResponse: (response: CurrentTaskResponse) => void) => {
+    if (
+      message !== null &&
+      typeof message === "object" &&
+      "type" in message &&
+      (message as { type: unknown }).type === "GET_CURRENT_TASK"
+    ) {
+      sendResponse({ taskKey: currentTaskKey, meta: currentMeta });
+    }
+    return false;
+  }
+);
 
 const detector = new JiraPageDetector((taskKey) => {
-  if (taskKey === null) {
-    floatingTimer.setTaskKey(null, null);
-    return;
-  }
+  currentTaskKey = taskKey;
+  currentMeta = null;
+
+  if (taskKey === null) return;
 
   const baseUrl = `${window.location.protocol}//${window.location.host}`;
   taskExtractor
     .resolveTaskMeta(taskKey, baseUrl)
     .then((meta) => {
-      floatingTimer.setTaskKey(taskKey, meta);
+      if (currentTaskKey === taskKey) {
+        currentMeta = meta;
+      }
     })
     .catch((err: unknown) => {
       console.error("[TimeRabbit] Failed to resolve task meta:", err);
-      floatingTimer.setTaskKey(taskKey, null);
     });
 });
 
