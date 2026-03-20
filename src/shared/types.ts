@@ -7,6 +7,13 @@ export const ACTIVITY_LABELS: Record<ActivityType, string> = {
   other: "その他",
 } as const;
 
+export const ACTIVITY_COLORS: Record<ActivityType, string> = {
+  design: "#0052cc",
+  implementation: "#36b37e",
+  review: "#ff991f",
+  other: "#97a0af",
+} as const;
+
 export interface JiraSprint {
   id: number;
   name: string;

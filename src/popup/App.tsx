@@ -57,8 +57,15 @@ export default function App(): JSX.Element {
 
   return (
     <>
-      <div className="bg-[#0052cc] text-white px-4 py-3 text-[15px] font-bold tracking-[0.01em]">
-        TimeRabbit for Jira
+      <div className="bg-[#0052cc] text-white px-4 py-3 flex items-center justify-between">
+        <span className="text-[15px] font-bold tracking-[0.01em]">TimeRabbit for Jira</span>
+        <button
+          onClick={() => chrome.runtime.openOptionsPage()}
+          title="ダッシュボードを開く"
+          className="cursor-pointer border-none bg-transparent text-white/80 hover:text-white text-[16px] leading-none p-0"
+        >
+          ↗
+        </button>
       </div>
       <div className="p-3 flex flex-col gap-3">
         {loading ? (
