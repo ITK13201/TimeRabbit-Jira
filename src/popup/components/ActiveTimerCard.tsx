@@ -35,47 +35,33 @@ export function ActiveTimerCard({ activeTimer, meta, onStop, onSwitchActivity }:
   };
 
   return (
-    <div className="card">
-      <div className="card-title">計測中</div>
-      <div style={{ fontWeight: 700, fontSize: "14px", color: "#0052cc", marginBottom: "4px" }}>
+    <div className="bg-white border border-[#dfe1e6] rounded-md px-3.5 py-3">
+      <div className="text-[11px] font-semibold text-[#5e6c84] uppercase tracking-[0.04em] mb-2">
+        計測中
+      </div>
+      <div className="font-bold text-[14px] text-[#0052cc] mb-1">
         {activeTimer.taskKey}
       </div>
       {meta && (
-        <div
-          style={{
-            fontSize: "12px",
-            color: "#5e6c84",
-            marginBottom: "8px",
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-          }}
-        >
+        <div className="text-xs text-[#5e6c84] mb-2 truncate">
           {meta.taskTitle}
         </div>
       )}
-      <div
-        style={{
-          fontSize: "28px",
-          fontWeight: 700,
-          fontVariantNumeric: "tabular-nums",
-          letterSpacing: "0.02em",
-          textAlign: "center",
-          marginBottom: "12px",
-          color: "#172b4d",
-        }}
-      >
+      <div className="text-[28px] font-bold tabular-nums tracking-[0.02em] text-center text-[#172b4d] mb-3">
         {formatDurationClock(elapsed)}
       </div>
-      <div style={{ marginBottom: "8px" }}>
-        <div style={{ fontSize: "11px", color: "#5e6c84", marginBottom: "4px" }}>アクティビティ変更</div>
+      <div className="mb-2">
+        <div className="text-[11px] text-[#5e6c84] mb-1">アクティビティ変更</div>
         <ActivitySelector value={activeTimer.activityType} onChange={onSwitchActivity} />
       </div>
-      <div style={{ fontSize: "11px", color: "#5e6c84", marginBottom: "4px", textAlign: "center" }}>
+      <div className="text-[11px] text-[#5e6c84] text-center mb-1">
         現在: {ACTIVITY_LABELS[activeTimer.activityType]}
       </div>
-      <div style={{ display: "flex", justifyContent: "center" }}>
-        <button className="btn-danger" onClick={handleStop}>
+      <div className="flex justify-center">
+        <button
+          onClick={handleStop}
+          className="cursor-pointer border-none rounded px-3 py-1.5 text-xs font-semibold bg-[#de350b] text-white hover:bg-[#ff5630] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
           停止
         </button>
       </div>

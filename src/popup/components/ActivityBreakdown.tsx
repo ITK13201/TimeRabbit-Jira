@@ -10,24 +10,15 @@ export function ActivityBreakdown({ byActivity }: ActivityBreakdownProps): JSX.E
   const entries = (Object.entries(byActivity) as [ActivityType, number][]).filter(([, ms]) => ms > 0);
 
   if (entries.length === 0) {
-    return <span style={{ color: "#5e6c84", fontSize: "11px" }}>記録なし</span>;
+    return <span className="text-[#5e6c84] text-[11px]">記録なし</span>;
   }
 
   return (
-    <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
+    <ul className="list-none m-0 p-0">
       {entries.map(([type, ms]) => (
-        <li
-          key={type}
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            fontSize: "11px",
-            color: "#5e6c84",
-            padding: "1px 0",
-          }}
-        >
+        <li key={type} className="flex justify-between text-[11px] text-[#5e6c84] py-px">
           <span>{ACTIVITY_LABELS[type]}</span>
-          <span style={{ fontVariantNumeric: "tabular-nums" }}>{formatDurationShort(ms)}</span>
+          <span className="tabular-nums">{formatDurationShort(ms)}</span>
         </li>
       ))}
     </ul>
