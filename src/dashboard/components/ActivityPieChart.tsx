@@ -1,4 +1,4 @@
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { PieChart, Pie, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import type { ActivityType } from "@/shared/types";
 import { ACTIVITY_LABELS, ACTIVITY_COLORS } from "@/shared/types";
 import { formatDurationShort } from "@/shared/utils/time";
@@ -15,7 +15,7 @@ interface TooltipPayloadItem {
 function CustomTooltip({ active, payload }: {
   active?: boolean;
   payload?: TooltipPayloadItem[];
-}): JSX.Element | null {
+}) {
   if (!active || !payload?.length) return null;
   const item = payload[0];
 
@@ -27,13 +27,13 @@ function CustomTooltip({ active, payload }: {
   );
 }
 
-export function ActivityPieChart({ activityTotals }: ActivityPieChartProps): JSX.Element {
+export function ActivityPieChart({ activityTotals }: ActivityPieChartProps) {
   const data = (Object.entries(activityTotals) as [ActivityType, number][])
     .filter(([, ms]) => ms > 0)
     .map(([type, ms]) => ({
       name: ACTIVITY_LABELS[type],
       value: ms,
-      color: ACTIVITY_COLORS[type],
+      fill: ACTIVITY_COLORS[type],
     }));
 
   if (data.length === 0) {
@@ -55,11 +55,7 @@ export function ActivityPieChart({ activityTotals }: ActivityPieChartProps): JSX
           outerRadius={80}
           paddingAngle={2}
           dataKey="value"
-        >
-          {data.map((entry, index) => (
-            <Cell key={index} fill={entry.color} />
-          ))}
-        </Pie>
+        />
         <Tooltip content={<CustomTooltip />} />
         <Legend
           formatter={(value: string) => (

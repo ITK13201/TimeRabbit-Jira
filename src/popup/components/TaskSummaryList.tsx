@@ -6,7 +6,7 @@ interface TaskSummaryListProps {
   summaries: TaskSummary[];
 }
 
-export function TaskSummaryList({ summaries }: TaskSummaryListProps): JSX.Element {
+export function TaskSummaryList({ summaries }: TaskSummaryListProps) {
   if (summaries.length === 0) {
     return (
       <div className="bg-white border border-[#dfe1e6] rounded-md px-3.5 py-3">

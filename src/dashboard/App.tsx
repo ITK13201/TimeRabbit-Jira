@@ -8,7 +8,7 @@ import { formatDurationShort } from "@/shared/utils/time";
 import { ACTIVITY_LABELS, ACTIVITY_COLORS } from "@/shared/types";
 import type { ActivityType } from "@/shared/types";
 
-export default function App(): JSX.Element {
+export default function App() {
   const {
     logs,
     filteredLogs,

@@ -28,7 +28,7 @@ function fromDateInput(value: string, endOfDay = false): number {
   return d.getTime();
 }
 
-export function DateRangePicker({ preset, dateRange, onPresetChange }: DateRangePickerProps): JSX.Element {
+export function DateRangePicker({ preset, dateRange, onPresetChange }: DateRangePickerProps) {
   const [customFrom, setCustomFrom] = useState(() => toDateInput(dateRange.from));
   const [customTo, setCustomTo] = useState(() => toDateInput(dateRange.to));
 

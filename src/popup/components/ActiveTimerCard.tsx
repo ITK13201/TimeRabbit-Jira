@@ -11,7 +11,7 @@ interface ActiveTimerCardProps {
   onSwitchActivity: (activityType: ActivityType) => void;
 }
 
-export function ActiveTimerCard({ activeTimer, meta, onStop, onSwitchActivity }: ActiveTimerCardProps): JSX.Element {
+export function ActiveTimerCard({ activeTimer, meta, onStop, onSwitchActivity }: ActiveTimerCardProps) {
   const [elapsed, setElapsed] = useState(() => Date.now() - activeTimer.startedAt);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 

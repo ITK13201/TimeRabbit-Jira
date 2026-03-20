@@ -7,7 +7,7 @@ interface ActivitySelectorProps {
   disabled?: boolean;
 }
 
-export function ActivitySelector({ value, onChange, disabled = false }: ActivitySelectorProps): JSX.Element {
+export function ActivitySelector({ value, onChange, disabled = false }: ActivitySelectorProps) {
   return (
     <select
       value={value}

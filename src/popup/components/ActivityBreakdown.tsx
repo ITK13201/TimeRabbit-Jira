@@ -6,7 +6,7 @@ interface ActivityBreakdownProps {
   byActivity: Record<ActivityType, number>;
 }
 
-export function ActivityBreakdown({ byActivity }: ActivityBreakdownProps): JSX.Element {
+export function ActivityBreakdown({ byActivity }: ActivityBreakdownProps) {
   const entries = (Object.entries(byActivity) as [ActivityType, number][]).filter(([, ms]) => ms > 0);
 
   if (entries.length === 0) {

@@ -27,7 +27,7 @@ interface EditState {
   activityType: ActivityType;
 }
 
-export function LogEditDrawer({ summary, logs, metaCache, onDelete, onUpdate, onClose }: LogEditDrawerProps): JSX.Element {
+export function LogEditDrawer({ summary, logs, metaCache, onDelete, onUpdate, onClose }: LogEditDrawerProps) {
   const taskLogs = logs
     .filter((l) => l.taskKey === summary.taskKey && l.stoppedAt !== null)
     .sort((a, b) => b.startedAt - a.startedAt);

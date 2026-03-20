@@ -6,7 +6,7 @@ import { ActivitySelector } from "./components/ActivitySelector";
 import { TaskSummaryList } from "./components/TaskSummaryList";
 import type { ActivityType } from "@/shared/types";
 
-export default function App(): JSX.Element {
+export default function App() {
   const { activeTimer, meta, currentTask, loading: timerLoading, startTimer, stopTimer, switchActivity, discardTimer } = useTimer();
   const { summaries, loading: logsLoading } = useLogs();
   const [selectedActivity, setSelectedActivity] = useState<ActivityType>("implementation");

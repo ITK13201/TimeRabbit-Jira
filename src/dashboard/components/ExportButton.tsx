@@ -6,7 +6,7 @@ interface ExportButtonProps {
   metaCache: Record<string, JiraTaskMeta>;
 }
 
-export function ExportButton({ logs, metaCache }: ExportButtonProps): JSX.Element {
+export function ExportButton({ logs, metaCache }: ExportButtonProps) {
   return (
     <div className="flex gap-2">
       <button

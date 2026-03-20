@@ -26,7 +26,7 @@ function CustomTooltip({ active, payload, label }: {
   active?: boolean;
   payload?: TooltipPayloadItem[];
   label?: string;
-}): JSX.Element | null {
+}) {
   if (!active || !payload?.length) return null;
 
   return (
@@ -55,7 +55,7 @@ function formatXAxisDate(date: string): string {
   return `${mm}/${dd}`;
 }
 
-export function TimelineChart({ dailyTotals }: TimelineChartProps): JSX.Element {
+export function TimelineChart({ dailyTotals }: TimelineChartProps) {
   if (dailyTotals.length === 0) {
     return (
       <div className="flex items-center justify-center h-48 text-[#5e6c84] text-xs">

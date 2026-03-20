@@ -14,7 +14,7 @@ interface TaskRankingTableProps {
 
 const ACTIVITY_TYPES = ["design", "implementation", "review", "review_response", "other"] as const;
 
-export function TaskRankingTable({ summaries, logs, metaCache, onDeleteLog, onUpdateLog }: TaskRankingTableProps): JSX.Element {
+export function TaskRankingTable({ summaries, logs, metaCache, onDeleteLog, onUpdateLog }: TaskRankingTableProps) {
   const [selectedSummary, setSelectedSummary] = useState<TaskSummary | null>(null);
 
   if (summaries.length === 0) {
