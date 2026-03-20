@@ -25,6 +25,7 @@ export function computeTaskSummaries(
           design: 0,
           implementation: 0,
           review: 0,
+          review_response: 0,
           other: 0,
           [log.activityType]: log.durationMs,
         },
@@ -57,6 +58,7 @@ export function computeDailyTotals(logs: TimeLog[]): DailyTotal[] {
           design: 0,
           implementation: 0,
           review: 0,
+          review_response: 0,
           other: 0,
           [log.activityType]: log.durationMs,
         },
@@ -81,7 +83,7 @@ export function filterLogs(logs: TimeLog[], filter: DashboardFilter): TimeLog[] 
 }
 
 export function computeActivityTotals(logs: TimeLog[]): Record<ActivityType, number> {
-  const totals: Record<ActivityType, number> = { design: 0, implementation: 0, review: 0, other: 0 };
+  const totals: Record<ActivityType, number> = { design: 0, implementation: 0, review: 0, review_response: 0, other: 0 };
   for (const log of logs) {
     if (log.stoppedAt !== null) totals[log.activityType] += log.durationMs;
   }

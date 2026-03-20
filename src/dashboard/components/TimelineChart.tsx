@@ -94,7 +94,7 @@ export function TimelineChart({ dailyTotals }: TimelineChartProps): JSX.Element 
             </span>
           )}
         />
-        {(["design", "implementation", "review", "other"] as const).map((type) => (
+        {(["design", "implementation", "review", "review_response", "other"] as const).map((type) => (
           <Bar key={type} dataKey={type} stackId="a" fill={ACTIVITY_COLORS[type]} name={ACTIVITY_LABELS[type]} />
         ))}
       </BarChart>

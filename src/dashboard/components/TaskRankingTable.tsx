@@ -12,7 +12,7 @@ interface TaskRankingTableProps {
   onUpdateLog: (log: TimeLog) => Promise<void>;
 }
 
-const ACTIVITY_TYPES = ["design", "implementation", "review", "other"] as const;
+const ACTIVITY_TYPES = ["design", "implementation", "review", "review_response", "other"] as const;
 
 export function TaskRankingTable({ summaries, logs, metaCache, onDeleteLog, onUpdateLog }: TaskRankingTableProps): JSX.Element {
   const [selectedSummary, setSelectedSummary] = useState<TaskSummary | null>(null);

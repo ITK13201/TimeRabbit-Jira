@@ -77,12 +77,12 @@ export default function App(): JSX.Element {
           </div>
 
           {/* Summary cards */}
-          <div className="grid grid-cols-5 gap-3">
+          <div className="grid grid-cols-6 gap-3">
             <div className="bg-white border border-[#dfe1e6] rounded-md px-4 py-3">
               <div className="text-[10px] font-semibold text-[#5e6c84] uppercase tracking-wide mb-1">合計</div>
               <div className="text-[18px] font-bold tabular-nums text-[#172b4d]">{formatDurationShort(totalMs)}</div>
             </div>
-            {(["design", "implementation", "review", "other"] as const).map((type) => (
+            {(["design", "implementation", "review", "review_response", "other"] as const).map((type) => (
               <div key={type} className="bg-white border border-[#dfe1e6] rounded-md px-4 py-3">
                 <div
                   className="text-[10px] font-semibold uppercase tracking-wide mb-1"

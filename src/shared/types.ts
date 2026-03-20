@@ -1,9 +1,10 @@
-export type ActivityType = "design" | "implementation" | "review" | "other";
+export type ActivityType = "design" | "implementation" | "review" | "review_response" | "other";
 
 export const ACTIVITY_LABELS: Record<ActivityType, string> = {
   design: "設計",
   implementation: "実装",
-  review: "レビュー",
+  review: "レビュー実施",
+  review_response: "レビュー対応",
   other: "その他",
 } as const;
 
@@ -11,6 +12,7 @@ export const ACTIVITY_COLORS: Record<ActivityType, string> = {
   design: "#0052cc",
   implementation: "#36b37e",
   review: "#ff991f",
+  review_response: "#e774bb",
   other: "#97a0af",
 } as const;
 
