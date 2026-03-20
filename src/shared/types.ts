@@ -75,7 +75,7 @@ export interface ExtensionSettings {
 }
 
 export const DEFAULT_SETTINGS: ExtensionSettings = {
-  storyPointsFieldId: "customfield_10016",
+  storyPointsFieldId: "customfield_10053",
   sprintFieldId: "customfield_10020",
   metaCacheTtlMs: 3_600_000,
   archiveThresholdDays: 90,

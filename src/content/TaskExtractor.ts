@@ -22,27 +22,89 @@ interface SprintField {
   state: "active" | "closed" | "future";
 }
 
+// ストーリーポイントフィールドとして認識する名前（Jiraインスタンスにより異なる）
+const STORY_POINTS_FIELD_NAMES = [
+  "Story Points",
+  "Story point estimate",
+  "Story points",
+  "ストーリーポイント",
+  "ストーリー ポイント",
+];
+
 export class TaskExtractor {
   private _cache: Record<string, JiraTaskMeta> = {};
   private _inFlight = new Map<string, Promise<JiraTaskMeta>>();
+  // null=未検出, false=検出試行済みで見つからず, string=検出済みフィールドID
+  private _detectedStoryPointsFieldId: string | null | false = null;
+  private _detectionPromise: Promise<string | false> | null = null;
+
+  /**
+   * セッション初回呼び出し時に /rest/api/3/field でストーリーポイントのフィールドIDを自動検出する。
+   * 設定値と異なるIDが見つかった場合は settings を更新し、古いキャッシュを全クリアして再フェッチを強制する。
+   */
+  private async _ensureFieldIdDetected(baseUrl: string, settings: ExtensionSettings): Promise<void> {
+    if (this._detectedStoryPointsFieldId !== null) return;
+
+    if (this._detectionPromise === null) {
+      this._detectionPromise = (async (): Promise<string | false> => {
+        try {
+          const response = await fetch(`${baseUrl}/rest/api/3/field`, {
+            credentials: "include",
+            headers: { "Accept": "application/json" },
+          });
+          if (!response.ok) return false;
+
+          const allFields = (await response.json()) as Array<{ id: string; name: string }>;
+          const found = allFields.find((f) => STORY_POINTS_FIELD_NAMES.includes(f.name));
+          if (!found) return false;
+
+          if (found.id !== settings.storyPointsFieldId) {
+            // settingsを更新
+            const stored = await chrome.storage.local.get(STORAGE_KEYS.SETTINGS);
+            const existing = stored[STORAGE_KEYS.SETTINGS] as Partial<ExtensionSettings> | undefined;
+            await chrome.storage.local.set({
+              [STORAGE_KEYS.SETTINGS]: { ...DEFAULT_SETTINGS, ...existing, storyPointsFieldId: found.id },
+            });
+            // 古いフィールドIDで保存されたキャッシュをクリア（再フェッチを強制）
+            await chrome.storage.local.set({ [STORAGE_KEYS.TASK_META_CACHE]: {} });
+            this._cache = {};
+          }
+
+          return found.id;
+        } catch {
+          return false;
+        }
+      })();
+    }
+
+    const result = await this._detectionPromise;
+    this._detectedStoryPointsFieldId = result;
+    this._detectionPromise = null;
+  }
 
   async resolveTaskMeta(taskKey: string, baseUrl: string): Promise<JiraTaskMeta> {
     const settings = await this._loadSettings();
 
-    // キャッシュチェック
+    // キャッシュより先にフィールドID検出（初回のみ実行、キャッシュクリアが必要な場合は行う）
+    await this._ensureFieldIdDetected(baseUrl, settings);
+
+    // 検出後のsettingsを再ロード（IDが変わった可能性あり）
+    const currentSettings = await this._loadSettings();
+
+    // メモリキャッシュチェック
     const cached = this._cache[taskKey];
     if (cached !== undefined) {
-      const isExpired = Date.now() - cached.fetchedAt > settings.metaCacheTtlMs;
+      const isExpired = Date.now() - cached.fetchedAt > currentSettings.metaCacheTtlMs;
       if (!isExpired) {
         return cached;
       }
     }
 
-    // storage からキャッシュチェック
+    // storageキャッシュチェック
     const storedCache = await this._loadStorageCache();
     const storedMeta = storedCache[taskKey];
     if (storedMeta !== undefined) {
-      const isExpired = Date.now() - storedMeta.fetchedAt > settings.metaCacheTtlMs;
+      const isExpired = Date.now() - storedMeta.fetchedAt > currentSettings.metaCacheTtlMs;
       if (!isExpired) {
         this._cache[taskKey] = storedMeta;
         return storedMeta;
@@ -55,7 +117,7 @@ export class TaskExtractor {
       return inFlight;
     }
 
-    const fetchPromise = this.fetchTaskMeta(taskKey, baseUrl, settings).then(async (meta) => {
+    const fetchPromise = this.fetchTaskMeta(taskKey, baseUrl, currentSettings).then(async (meta) => {
       this._cache[taskKey] = meta;
       await this._saveToStorageCache(taskKey, meta);
       this._inFlight.delete(taskKey);
@@ -97,20 +159,22 @@ export class TaskExtractor {
   mapToJiraTaskMeta(taskKey: string, fields: JiraIssueFields, settings: ExtensionSettings): JiraTaskMeta {
     const projectKey = taskKey.split("-")[0];
 
-    // storyPoints
+    // storyPoints（数値または文字列数値に対応）
     const storyPointsRaw = fields[settings.storyPointsFieldId];
-    const storyPoints = typeof storyPointsRaw === "number" ? storyPointsRaw : null;
+    let storyPoints: number | null = null;
+    if (typeof storyPointsRaw === "number") {
+      storyPoints = storyPointsRaw;
+    } else if (typeof storyPointsRaw === "string" && storyPointsRaw !== "") {
+      const parsed = parseFloat(storyPointsRaw);
+      if (!isNaN(parsed)) storyPoints = parsed;
+    }
 
     // sprint
     const sprintRaw = fields[settings.sprintFieldId];
     let sprint: JiraSprint | null = null;
     if (Array.isArray(sprintRaw) && sprintRaw.length > 0) {
       const lastSprint = sprintRaw[sprintRaw.length - 1] as SprintField;
-      sprint = {
-        id: lastSprint.id,
-        name: lastSprint.name,
-        state: lastSprint.state,
-      };
+      sprint = { id: lastSprint.id, name: lastSprint.name, state: lastSprint.state };
     } else if (sprintRaw !== null && typeof sprintRaw === "object" && !Array.isArray(sprintRaw)) {
       const s = sprintRaw as SprintField;
       sprint = { id: s.id, name: s.name, state: s.state };
