@@ -14,6 +14,7 @@ export class FloatingTimer {
   private _activeTimer: ActiveTimer | null = null;
   private _timerInterval: ReturnType<typeof setInterval> | null = null;
   private _storageListener: ((changes: { [key: string]: chrome.storage.StorageChange }) => void) | null = null;
+  private _visible = true;
 
   mount(): void {
     // 重複防止
@@ -24,9 +25,24 @@ export class FloatingTimer {
     this._shadow = this._host.attachShadow({ mode: "open" });
     document.body.appendChild(this._host);
 
+    this._loadVisibility();
     this._renderWidget();
     this._fetchState();
     this._startStorageListener();
+  }
+
+  private _loadVisibility(): void {
+    chrome.storage.local.get(STORAGE_KEYS.SETTINGS).then((result) => {
+      const settings = result[STORAGE_KEYS.SETTINGS] as { showFloatingTimer?: boolean } | undefined;
+      this._visible = settings?.showFloatingTimer ?? true;
+      this._applyVisibility();
+    }).catch(() => { /* context invalidated */ });
+  }
+
+  private _applyVisibility(): void {
+    if (this._host) {
+      this._host.style.display = this._visible ? "" : "none";
+    }
   }
 
   unmount(): void {
@@ -56,6 +72,10 @@ export class FloatingTimer {
         }
       })
       .catch((err: unknown) => {
+        if (err instanceof Error && err.message.includes("Extension context invalidated")) {
+          this.unmount();
+          return;
+        }
         console.error("[TimeRabbit] GET_STATE error:", err);
       });
   }
@@ -72,6 +92,11 @@ export class FloatingTimer {
           this._stopTimer();
         }
         this._renderWidget();
+      }
+      if (STORAGE_KEYS.SETTINGS in changes) {
+        const settings = changes[STORAGE_KEYS.SETTINGS]?.newValue as { showFloatingTimer?: boolean } | undefined;
+        this._visible = settings?.showFloatingTimer ?? true;
+        this._applyVisibility();
       }
     };
     chrome.storage.onChanged.addListener(this._storageListener);

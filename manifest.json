@@ -17,7 +17,9 @@
       "matches": [
         "*://*.atlassian.net/browse/*",
         "*://*.atlassian.net/jira/software/projects/*/issues/*",
-        "*://*.atlassian.net/jira/*/issues/*"
+        "*://*.atlassian.net/jira/*/issues/*",
+        "*://*.atlassian.net/jira/software/projects/*/boards/*",
+        "*://*.atlassian.net/jira/software/c/projects/*/boards/*"
       ],
       "js": ["src/content/index.ts"],
       "run_at": "document_idle"

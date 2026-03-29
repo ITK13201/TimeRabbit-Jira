@@ -69,6 +69,7 @@ export function TimelineChart({ dailyTotals }: TimelineChartProps) {
     design: d.byActivity.design,
     implementation: d.byActivity.implementation,
     review: d.byActivity.review,
+    review_response: d.byActivity.review_response,
     other: d.byActivity.other,
   }));
 

@@ -1,12 +1,21 @@
+import { useState } from "react";
 import { useDashboard } from "./hooks/useDashboard";
 import { DateRangePicker } from "./components/DateRangePicker";
 import { TimelineChart } from "./components/TimelineChart";
 import { ActivityPieChart } from "./components/ActivityPieChart";
 import { TaskRankingTable } from "./components/TaskRankingTable";
 import { ExportButton } from "./components/ExportButton";
+import { AddLogModal } from "./components/AddLogModal";
+import { ToastContainer } from "./components/ToastContainer";
+import { ChronologicalLogView } from "./components/ChronologicalLogView";
+import { MetaCacheView } from "./components/MetaCacheView";
+import { SettingsPanel } from "./components/SettingsPanel";
 import { formatDurationShort } from "@/shared/utils/time";
+import { useToast } from "@/shared/utils/useToast";
 import { ACTIVITY_LABELS, ACTIVITY_COLORS } from "@/shared/types";
-import type { ActivityType } from "@/shared/types";
+import type { ActivityType, TimeLog } from "@/shared/types";
+
+type TabKey = "task" | "timeline" | "cache" | "settings";
 
 export default function App() {
   const {
@@ -20,10 +29,47 @@ export default function App() {
     summaries,
     dailyTotals,
     activityTotals,
+    addLog,
     deleteLog,
+    undoDelete,
     updateLog,
+    settings,
+    saveSettings,
     loading,
   } = useDashboard();
+
+  const { toasts, showToast, dismissToast } = useToast();
+  const [activeTab, setActiveTab] = useState<TabKey>("task");
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [addModalPreset, setAddModalPreset] = useState<{
+    date?: string;
+    startTime?: string;
+    endTime?: string;
+  }>({});
+
+  const handleAddLog = async (log: TimeLog): Promise<void> => {
+    await addLog(log);
+    showToast("ログを追加しました");
+  };
+
+  function openAddModal(preset?: { date?: string; startTime?: string; endTime?: string }) {
+    setAddModalPreset(preset ?? {});
+    setShowAddModal(true);
+  }
+
+  const handleDeleteWithUndo = (logId: string): void => {
+    void deleteLog(logId, { withUndo: true });
+    const toastId = showToast("削除しました", {
+      durationMs: 5000,
+      action: {
+        label: "元に戻す",
+        onClick: () => {
+          undoDelete(logId);
+          dismissToast(toastId);
+        },
+      },
+    });
+  };
 
   const totalMs = (Object.values(activityTotals) as number[]).reduce((a, b) => a + b, 0);
 
@@ -32,7 +78,15 @@ export default function App() {
       {/* Header */}
       <div className="bg-[#0052cc] text-white px-6 py-4 flex items-center justify-between">
         <span className="text-[16px] font-bold tracking-[0.01em]">TimeRabbit for Jira — ダッシュボード</span>
-        <ExportButton logs={filteredLogs} metaCache={metaCache} />
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => openAddModal()}
+            className="cursor-pointer border border-white/40 rounded px-3 py-1.5 text-xs font-semibold bg-white/10 text-white hover:bg-white/20 transition-colors"
+          >
+            ＋ ログを追加
+          </button>
+          <ExportButton logs={filteredLogs} metaCache={metaCache} />
+        </div>
       </div>
 
       {loading ? (
@@ -97,37 +151,102 @@ export default function App() {
             ))}
           </div>
 
-          {/* Charts */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-white border border-[#dfe1e6] rounded-md px-4 py-3">
-              <div className="text-[11px] font-semibold text-[#5e6c84] uppercase tracking-wide mb-3">
-                日別タイムライン
+          {/* Charts（タスク軸のみ表示） */}
+          {activeTab === "task" && (
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-white border border-[#dfe1e6] rounded-md px-4 py-3">
+                <div className="text-[11px] font-semibold text-[#5e6c84] uppercase tracking-wide mb-3">
+                  日別タイムライン
+                </div>
+                <TimelineChart dailyTotals={dailyTotals} />
               </div>
-              <TimelineChart dailyTotals={dailyTotals} />
-            </div>
-            <div className="bg-white border border-[#dfe1e6] rounded-md px-4 py-3">
-              <div className="text-[11px] font-semibold text-[#5e6c84] uppercase tracking-wide mb-3">
-                アクティビティ内訳
+              <div className="bg-white border border-[#dfe1e6] rounded-md px-4 py-3">
+                <div className="text-[11px] font-semibold text-[#5e6c84] uppercase tracking-wide mb-3">
+                  アクティビティ内訳
+                </div>
+                <ActivityPieChart activityTotals={activityTotals} />
               </div>
-              <ActivityPieChart activityTotals={activityTotals} />
             </div>
-          </div>
+          )}
 
-          {/* Task ranking */}
+          {/* タブ */}
           <div>
-            <div className="text-[11px] font-semibold text-[#5e6c84] uppercase tracking-wide mb-2 px-0.5">
-              タスク別ランキング
+            <div className="flex gap-1 border-b border-[#dfe1e6] bg-white px-4 rounded-t-md">
+              {([
+                { key: "task", label: "タスク軸" },
+                { key: "timeline", label: "時間軸" },
+                { key: "cache", label: "タスクキャッシュ" },
+                { key: "settings", label: "設定" },
+              ] as { key: TabKey; label: string }[]).map((tab) => (
+                <button
+                  key={tab.key}
+                  onClick={() => setActiveTab(tab.key)}
+                  className={`cursor-pointer border-none bg-transparent px-4 py-2.5 text-xs font-semibold border-b-2 transition-colors ${
+                    activeTab === tab.key
+                      ? "border-[#0052cc] text-[#0052cc]"
+                      : "border-transparent text-[#5e6c84] hover:text-[#172b4d]"
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
             </div>
-            <TaskRankingTable
-              summaries={summaries}
-              logs={logs}
-              metaCache={metaCache}
-              onDeleteLog={deleteLog}
-              onUpdateLog={updateLog}
-            />
+
+            {activeTab === "task" && (
+              <TaskRankingTable
+                summaries={summaries}
+                logs={logs}
+                metaCache={metaCache}
+                jiraBaseUrls={settings.jiraBaseUrls}
+                onDeleteLog={deleteLog}
+                onUpdateLog={updateLog}
+                onAddLog={addLog}
+              />
+            )}
+
+            {activeTab === "timeline" && (
+              <div className="mt-3">
+                <ChronologicalLogView
+                  logs={filteredLogs}
+                  allLogs={logs}
+                  metaCache={metaCache}
+                  onDeleteWithUndo={handleDeleteWithUndo}
+                  onUpdate={updateLog}
+                  onAddLog={addLog}
+                  onOpenAddModal={openAddModal}
+                  onShowToast={(msg) => showToast(msg)}
+                />
+              </div>
+            )}
+
+            {activeTab === "cache" && (
+              <div className="mt-3">
+                <MetaCacheView metaCache={metaCache} logs={logs} jiraBaseUrls={settings.jiraBaseUrls} />
+              </div>
+            )}
+
+            {activeTab === "settings" && (
+              <div className="mt-3">
+                <SettingsPanel settings={settings} onSave={saveSettings} />
+              </div>
+            )}
           </div>
         </div>
       )}
+
+      {showAddModal && (
+        <AddLogModal
+          metaCache={metaCache}
+          existingLogs={logs}
+          onSave={handleAddLog}
+          onClose={() => setShowAddModal(false)}
+          initialDate={addModalPreset.date}
+          initialStartTime={addModalPreset.startTime}
+          initialEndTime={addModalPreset.endTime}
+        />
+      )}
+
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
     </div>
   );
 }

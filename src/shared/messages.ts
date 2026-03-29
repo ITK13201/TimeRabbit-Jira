@@ -5,6 +5,7 @@ export type Message =
   | { type: "STOP_TIMER" }
   | { type: "SWITCH_ACTIVITY"; payload: { activityType: ActivityType } }
   | { type: "DISCARD_TIMER" }
+  | { type: "UPDATE_TIMER_START"; payload: { startedAt: number } }
   | { type: "GET_STATE" }
   | { type: "GET_LOGS" };
 

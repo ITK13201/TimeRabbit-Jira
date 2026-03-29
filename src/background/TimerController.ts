@@ -69,6 +69,12 @@ export class TimerController {
     await this.storage.setActiveTimer(null);
   }
 
+  async updateTimerStart(startedAt: number): Promise<void> {
+    const activeTimer = await this.storage.getActiveTimer();
+    if (activeTimer === null) return;
+    await this.storage.setActiveTimer({ ...activeTimer, startedAt });
+  }
+
   async getState(): Promise<{ activeTimer: ActiveTimer | null; meta: JiraTaskMeta | null }> {
     const activeTimer = await this.storage.getActiveTimer();
     if (activeTimer === null) {

@@ -45,3 +45,62 @@ export function toDateString(ts: number): string {
   const d = new Date(ts);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
+
+/** Unix timestamp (ms) を "HH:MM" 形式にフォーマット */
+export function formatTimeHHMM(ts: number): string {
+  const d = new Date(ts);
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
+/**
+ * 時間テキストをミリ秒に変換。解析できない場合は null を返す。
+ * 対応フォーマット: "1h30m" / "1h 30m" / "90m" / "2h" / "1:30" / "1:30:00" / "30"（分として解釈）
+ */
+export function parseDurationText(input: string): number | null {
+  const s = input.trim().toLowerCase();
+  if (!s) return null;
+
+  // "1h30m" or "1h 30m"
+  const hm = s.match(/^(\d+)h\s*(\d+)m$/);
+  if (hm) {
+    const ms = (parseInt(hm[1]) * 60 + parseInt(hm[2])) * 60000;
+    return ms > 0 ? ms : null;
+  }
+
+  // "2h"
+  const h = s.match(/^(\d+)h$/);
+  if (h) {
+    const ms = parseInt(h[1]) * 3600000;
+    return ms > 0 ? ms : null;
+  }
+
+  // "90m"
+  const m = s.match(/^(\d+)m$/);
+  if (m) {
+    const ms = parseInt(m[1]) * 60000;
+    return ms > 0 ? ms : null;
+  }
+
+  // "1:30:00"
+  const hms = s.match(/^(\d+):(\d{2}):(\d{2})$/);
+  if (hms) {
+    const ms = (parseInt(hms[1]) * 3600 + parseInt(hms[2]) * 60 + parseInt(hms[3])) * 1000;
+    return ms > 0 ? ms : null;
+  }
+
+  // "1:30"
+  const hmColon = s.match(/^(\d+):(\d{2})$/);
+  if (hmColon) {
+    const ms = (parseInt(hmColon[1]) * 60 + parseInt(hmColon[2])) * 60000;
+    return ms > 0 ? ms : null;
+  }
+
+  // "30" — 分として解釈
+  const bare = s.match(/^(\d+)$/);
+  if (bare) {
+    const ms = parseInt(bare[1]) * 60000;
+    return ms > 0 ? ms : null;
+  }
+
+  return null;
+}

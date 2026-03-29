@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import type { ActivityType, DailyTotal, DashboardFilter, JiraTaskMeta, TaskSummary, TimeLog } from "@/shared/types";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { ActivityType, DailyTotal, DashboardFilter, ExtensionSettings, JiraTaskMeta, TaskSummary, TimeLog } from "@/shared/types";
+import { DEFAULT_SETTINGS } from "@/shared/types";
 import { STORAGE_KEYS } from "@/shared/utils/storage";
 import { computeTaskSummaries, computeDailyTotals, filterLogs, computeActivityTotals } from "@/shared/utils/aggregation";
 
@@ -73,8 +74,12 @@ export interface UseDashboardReturn {
   summaries: TaskSummary[];
   dailyTotals: DailyTotal[];
   activityTotals: Record<ActivityType, number>;
-  deleteLog: (logId: string) => Promise<void>;
+  addLog: (log: TimeLog) => Promise<void>;
+  deleteLog: (logId: string, opts?: { withUndo?: boolean }) => Promise<void>;
+  undoDelete: (logId: string) => void;
   updateLog: (log: TimeLog) => Promise<void>;
+  settings: ExtensionSettings;
+  saveSettings: (settings: ExtensionSettings) => Promise<void>;
   loading: boolean;
 }
 
@@ -83,15 +88,18 @@ export function useDashboard(): UseDashboardReturn {
   const [metaCache, setMetaCache] = useState<Record<string, JiraTaskMeta>>({});
   const [filter, setFilter] = useState<DashboardFilter>(buildDefaultFilter);
   const [preset, setPresetState] = useState<DateRangePreset>(DEFAULT_PRESET);
+  const [settings, setSettings] = useState<ExtensionSettings>(DEFAULT_SETTINGS);
   const [loading, setLoading] = useState(true);
 
   const fetchData = useCallback(async () => {
     const result = await chrome.storage.local.get([
       STORAGE_KEYS.TIME_LOGS,
       STORAGE_KEYS.TASK_META_CACHE,
+      STORAGE_KEYS.SETTINGS,
     ]);
     setLogs((result[STORAGE_KEYS.TIME_LOGS] as TimeLog[] | undefined) ?? []);
     setMetaCache((result[STORAGE_KEYS.TASK_META_CACHE] as Record<string, JiraTaskMeta> | undefined) ?? {});
+    setSettings({ ...DEFAULT_SETTINGS, ...((result[STORAGE_KEYS.SETTINGS] as Partial<ExtensionSettings> | undefined) ?? {}) });
     setLoading(false);
   }, []);
 
@@ -99,7 +107,7 @@ export function useDashboard(): UseDashboardReturn {
     void fetchData();
 
     const listener = (changes: { [key: string]: chrome.storage.StorageChange }) => {
-      if (STORAGE_KEYS.TIME_LOGS in changes || STORAGE_KEYS.TASK_META_CACHE in changes) {
+      if (STORAGE_KEYS.TIME_LOGS in changes || STORAGE_KEYS.TASK_META_CACHE in changes || STORAGE_KEYS.SETTINGS in changes) {
         void fetchData();
       }
     };
@@ -123,18 +131,53 @@ export function useDashboard(): UseDashboardReturn {
   const dailyTotals = useMemo(() => computeDailyTotals(filteredLogs), [filteredLogs]);
   const activityTotals = useMemo(() => computeActivityTotals(filteredLogs), [filteredLogs]);
 
-  const deleteLog = useCallback(async (logId: string) => {
+  const addLog = useCallback(async (log: TimeLog) => {
     const result = await chrome.storage.local.get(STORAGE_KEYS.TIME_LOGS);
     const current = (result[STORAGE_KEYS.TIME_LOGS] as TimeLog[] | undefined) ?? [];
-    const updated = current.filter((l) => l.id !== logId);
-    await chrome.storage.local.set({ [STORAGE_KEYS.TIME_LOGS]: updated });
+    await chrome.storage.local.set({ [STORAGE_KEYS.TIME_LOGS]: [...current, log] });
   }, []);
+
+  const pendingDeletes = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+
+  const deleteLog = useCallback(async (logId: string, opts?: { withUndo?: boolean }) => {
+    if (opts?.withUndo) {
+      // ローカル state から即時除外（storage はまだ変更しない）
+      setLogs((prev) => prev.filter((l) => l.id !== logId));
+      const timerId = setTimeout(async () => {
+        const result = await chrome.storage.local.get(STORAGE_KEYS.TIME_LOGS);
+        const current = (result[STORAGE_KEYS.TIME_LOGS] as TimeLog[] | undefined) ?? [];
+        await chrome.storage.local.set({ [STORAGE_KEYS.TIME_LOGS]: current.filter((l) => l.id !== logId) });
+        pendingDeletes.current.delete(logId);
+      }, 5000);
+      pendingDeletes.current.set(logId, timerId);
+    } else {
+      const result = await chrome.storage.local.get(STORAGE_KEYS.TIME_LOGS);
+      const current = (result[STORAGE_KEYS.TIME_LOGS] as TimeLog[] | undefined) ?? [];
+      const updated = current.filter((l) => l.id !== logId);
+      await chrome.storage.local.set({ [STORAGE_KEYS.TIME_LOGS]: updated });
+    }
+  }, []);
+
+  const undoDelete = useCallback((logId: string) => {
+    const timerId = pendingDeletes.current.get(logId);
+    if (timerId !== undefined) {
+      clearTimeout(timerId);
+      pendingDeletes.current.delete(logId);
+      // storage は変更されていないので re-fetch で state を復元
+      void fetchData();
+    }
+  }, [fetchData]);
 
   const updateLog = useCallback(async (log: TimeLog) => {
     const result = await chrome.storage.local.get(STORAGE_KEYS.TIME_LOGS);
     const current = (result[STORAGE_KEYS.TIME_LOGS] as TimeLog[] | undefined) ?? [];
     const updated = current.map((l) => (l.id === log.id ? log : l));
     await chrome.storage.local.set({ [STORAGE_KEYS.TIME_LOGS]: updated });
+  }, []);
+
+  const saveSettings = useCallback(async (newSettings: ExtensionSettings) => {
+    await chrome.storage.local.set({ [STORAGE_KEYS.SETTINGS]: newSettings });
+    setSettings(newSettings);
   }, []);
 
   return {
@@ -148,8 +191,12 @@ export function useDashboard(): UseDashboardReturn {
     summaries,
     dailyTotals,
     activityTotals,
+    addLog,
     deleteLog,
+    undoDelete,
     updateLog,
+    settings,
+    saveSettings,
     loading,
   };
 }

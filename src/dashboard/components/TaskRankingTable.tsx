@@ -8,13 +8,15 @@ interface TaskRankingTableProps {
   summaries: TaskSummary[];
   logs: TimeLog[];
   metaCache: Record<string, JiraTaskMeta>;
+  jiraBaseUrls?: Record<string, string>;
   onDeleteLog: (logId: string) => Promise<void>;
   onUpdateLog: (log: TimeLog) => Promise<void>;
+  onAddLog: (log: TimeLog) => Promise<void>;
 }
 
 const ACTIVITY_TYPES = ["design", "implementation", "review", "review_response", "other"] as const;
 
-export function TaskRankingTable({ summaries, logs, metaCache, onDeleteLog, onUpdateLog }: TaskRankingTableProps) {
+export function TaskRankingTable({ summaries, logs, metaCache, jiraBaseUrls, onDeleteLog, onUpdateLog, onAddLog }: TaskRankingTableProps) {
   const [selectedSummary, setSelectedSummary] = useState<TaskSummary | null>(null);
 
   if (summaries.length === 0) {
@@ -77,8 +79,11 @@ export function TaskRankingTable({ summaries, logs, metaCache, onDeleteLog, onUp
           summary={selectedSummary}
           logs={logs}
           metaCache={metaCache}
+          allLogs={logs}
+          jiraBaseUrls={jiraBaseUrls}
           onDelete={onDeleteLog}
           onUpdate={onUpdateLog}
+          onAddLog={onAddLog}
           onClose={() => setSelectedSummary(null)}
         />
       )}

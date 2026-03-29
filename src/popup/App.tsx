@@ -7,7 +7,7 @@ import { TaskSummaryList } from "./components/TaskSummaryList";
 import type { ActivityType } from "@/shared/types";
 
 export default function App() {
-  const { activeTimer, meta, currentTask, loading: timerLoading, startTimer, stopTimer, switchActivity, discardTimer } = useTimer();
+  const { activeTimer, meta, currentTask, loading: timerLoading, startTimer, stopTimer, switchActivity, discardTimer, updateTimerStart } = useTimer();
   const { summaries, loading: logsLoading } = useLogs();
   const [selectedActivity, setSelectedActivity] = useState<ActivityType>("implementation");
 
@@ -59,13 +59,15 @@ export default function App() {
     <>
       <div className="bg-[#0052cc] text-white px-4 py-3 flex items-center justify-between">
         <span className="text-[15px] font-bold tracking-[0.01em]">TimeRabbit for Jira</span>
-        <button
-          onClick={() => chrome.runtime.openOptionsPage()}
-          title="ダッシュボードを開く"
-          className="cursor-pointer border-none bg-transparent text-white/80 hover:text-white text-[16px] leading-none p-0"
-        >
-          ↗
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => chrome.runtime.openOptionsPage()}
+            title="ダッシュボードを開く"
+            className="cursor-pointer border-none bg-transparent text-white/80 hover:text-white text-[16px] leading-none p-0"
+          >
+            ↗
+          </button>
+        </div>
       </div>
       <div className="p-3 flex flex-col gap-3">
         {loading ? (
@@ -102,6 +104,7 @@ export default function App() {
                 meta={meta}
                 onStop={handleStop}
                 onSwitchActivity={handleSwitchActivity}
+                onUpdateStartTime={updateTimerStart}
               />
             )}
 

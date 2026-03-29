@@ -47,6 +47,12 @@ export class MessageRouter {
         return { type: "OK" };
       }
 
+      case "UPDATE_TIMER_START": {
+        const { startedAt } = message.payload;
+        await this.timerController.updateTimerStart(startedAt);
+        return { type: "OK" };
+      }
+
       case "GET_STATE": {
         const { activeTimer, meta } = await this.timerController.getState();
         return { type: "STATE", activeTimer, meta };

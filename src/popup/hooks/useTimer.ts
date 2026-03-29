@@ -17,6 +17,7 @@ interface UseTimerResult {
   stopTimer: () => Promise<void>;
   switchActivity: (activityType: ActivityType) => Promise<void>;
   discardTimer: () => Promise<void>;
+  updateTimerStart: (startedAt: number) => Promise<void>;
   refresh: () => void;
 }
 
@@ -102,6 +103,11 @@ export function useTimer(): UseTimerResult {
     fetchState();
   }, [fetchState]);
 
+  const updateTimerStart = useCallback(async (startedAt: number) => {
+    await sendMessage({ type: "UPDATE_TIMER_START", payload: { startedAt } });
+    fetchState();
+  }, [fetchState]);
+
   return {
     activeTimer,
     meta,
@@ -111,6 +117,7 @@ export function useTimer(): UseTimerResult {
     stopTimer,
     switchActivity,
     discardTimer,
+    updateTimerStart,
     refresh: fetchState,
   };
 }

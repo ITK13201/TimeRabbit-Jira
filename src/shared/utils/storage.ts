@@ -3,5 +3,4 @@ export const STORAGE_KEYS = {
   ACTIVE_TIMER: "timeRabbit_activeTimer",
   TASK_META_CACHE: "timeRabbit_taskMetaCache",
   SETTINGS: "timeRabbit_settings",
-
 } as const;
