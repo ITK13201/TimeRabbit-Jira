@@ -35,3 +35,42 @@ Content Script  ──sendMessage──▶  Service Worker (Background)
 ```
 
 パスエイリアス: `@/*` → `src/*`
+
+## ストレージキー（`src/shared/utils/storage.ts`）
+
+| キー | 内容 |
+|---|---|
+| `timeRabbit_timeLogs` | `TimeLog[]` — 全ログ |
+| `timeRabbit_activeTimer` | `ActiveTimer \| null` — 計測中タイマー |
+| `timeRabbit_taskMetaCache` | `Record<string, JiraTaskMeta>` — Jira メタキャッシュ |
+| `timeRabbit_settings` | `ExtensionSettings` — 拡張設定 |
+
+## ExtensionSettings（`src/shared/types.ts`）
+
+```typescript
+interface ExtensionSettings {
+  jiraBaseUrls: Record<string, string>; // プロジェクトキー → ベースURL（例: { "PROJ": "https://org.atlassian.net" }）
+  showFloatingTimer: boolean;           // Jira ページ右下ウィジェットの表示制御
+  storyPointsFieldId: string;
+  sprintFieldId: string;
+  metaCacheTtlMs: number;
+  archiveThresholdDays: number;
+}
+```
+
+`jiraBaseUrls` は「Jiraで開く」リンク生成に使用。`src/shared/utils/jira.ts` の `buildJiraUrl(taskKey, jiraBaseUrls)` 経由で参照する。
+
+## Content Script の注入対象URL
+
+`manifest.json` の `content_scripts.matches` に以下を登録済み:
+
+- `/browse/*` — タスク詳細ページ
+- `/jira/*/issues/*` — Issues ビュー
+- `/jira/software/projects/*/boards/*` — ボード
+- `/jira/software/c/projects/*/boards/*` — Company-managed ボード（バックログ含む）
+
+ボード・バックログで課題パネルを開いた場合は URL の `?selectedIssue=TASK-123` クエリパラメータからタスクキーを抽出する（`JiraPageDetector._extractTaskKey`）。
+
+## Extension context invalidated の扱い
+
+拡張機能のリロード後、旧 Content Script が `chrome.storage` / `chrome.runtime` を呼ぶと `Extension context invalidated` エラーが発生する。`src/content/index.ts` でこのエラーを検知したら `detector.stop()` + `floatingTimer.unmount()` を呼んで処理を止める。`FloatingTimer` 内でも同様に自身を `unmount()` する。
