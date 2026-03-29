@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "TimeRabbit for Jira",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Jiraタスクの作業時間をアクティビティ種別ごとに計測・記録する",
   "permissions": ["storage", "alarms", "tabs"],
   "host_permissions": [
