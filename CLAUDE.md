@@ -40,6 +40,8 @@ Content Script  ──sendMessage──▶  Service Worker (Background)
 
 ビルドは `vite-plugin-web-extension` が `manifest.json` を起点として全エントリ（background / content / popup / dashboard）を自動解決する。**Tailwind CSS v4** を使用（`@tailwindcss/vite` プラグイン経由）。
 
+`src/global.d.ts` で `chrome` グローバル型（TypeScript 6 対応）と CSS モジュール宣言を提供している。
+
 ## メッセージ送受信
 
 `src/shared/messages.ts` の型付き `sendMessage()` ラッパーを使う。直接 `chrome.runtime.sendMessage` を呼び出すと型安全性が失われる。
@@ -67,8 +69,9 @@ const task = await sendMessage({ type: "GET_CURRENT_TASK" }, tabId);
 
 ```typescript
 interface ExtensionSettings {
-  jiraBaseUrls: Record<string, string>; // プロジェクトキー → ベースURL（例: { "PROJ": "https://org.atlassian.net" }）
-  showFloatingTimer: boolean;           // Jira ページ右下ウィジェットの表示制御
+  jiraBaseUrls: Record<string, string>;    // プロジェクトキー → ベースURL（例: { "PROJ": "https://org.atlassian.net" }）
+  showFloatingTimer: boolean;              // Jira ページ右下ウィジェットの表示制御
+  floatingTimerCollapseToCorner: boolean; // 最小化時に画面右下へ移動するか
   storyPointsFieldId: string;
   sprintFieldId: string;
   metaCacheTtlMs: number;
