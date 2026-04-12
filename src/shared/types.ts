@@ -72,6 +72,7 @@ export interface DailyTotal {
 export interface ExtensionSettings {
   jiraBaseUrls: Record<string, string>;
   showFloatingTimer: boolean;
+  floatingTimerCollapseToCorner: boolean;
   storyPointsFieldId: string;
   sprintFieldId: string;
   metaCacheTtlMs: number;
@@ -81,6 +82,7 @@ export interface ExtensionSettings {
 export const DEFAULT_SETTINGS: ExtensionSettings = {
   jiraBaseUrls: {},
   showFloatingTimer: true,
+  floatingTimerCollapseToCorner: false,
   storyPointsFieldId: "customfield_10053",
   sprintFieldId: "customfield_10020",
   metaCacheTtlMs: 3_600_000,

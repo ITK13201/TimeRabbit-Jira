@@ -28,12 +28,13 @@ function toRecord(rows: UrlRow[]): Record<string, string> {
 export function SettingsPanel({ settings, onSave }: SettingsPanelProps) {
   const [rows, setRows] = useState<UrlRow[]>(() => toRows(settings.jiraBaseUrls));
   const [showFloatingTimer, setShowFloatingTimer] = useState(settings.showFloatingTimer);
+  const [floatingTimerCollapseToCorner, setFloatingTimerCollapseToCorner] = useState(settings.floatingTimerCollapseToCorner);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
   const handleSave = async () => {
     setSaving(true);
-    await onSave({ ...settings, jiraBaseUrls: toRecord(rows), showFloatingTimer });
+    await onSave({ ...settings, jiraBaseUrls: toRecord(rows), showFloatingTimer, floatingTimerCollapseToCorner });
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
@@ -122,6 +123,17 @@ export function SettingsPanel({ settings, onSave }: SettingsPanelProps) {
           />
           <span className="text-xs text-[#172b4d]">Jira ページに右下のタイマーカードを表示する</span>
         </label>
+        {showFloatingTimer && (
+          <label className="mt-1 ml-5 flex items-center gap-2 cursor-pointer w-fit">
+            <input
+              type="checkbox"
+              checked={floatingTimerCollapseToCorner}
+              onChange={(e) => { setFloatingTimerCollapseToCorner(e.target.checked); setSaved(false); }}
+              className="w-3.5 h-3.5 accent-[#0052cc]"
+            />
+            <span className="text-xs text-[#172b4d]">最小化時に画面右下へ移動する</span>
+          </label>
+        )}
       </div>
 
       <div className="flex justify-end">

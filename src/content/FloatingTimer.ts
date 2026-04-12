@@ -15,6 +15,13 @@ export class FloatingTimer {
   private _timerInterval: ReturnType<typeof setInterval> | null = null;
   private _storageListener: ((changes: { [key: string]: chrome.storage.StorageChange }) => void) | null = null;
   private _visible = true;
+  private _dismissed = false;
+  private _collapsed = false;
+  private _posX: number | null = null;
+  private _posY: number | null = null;
+  private _collapseToCorner = false;
+  private _barSnapLeft: number | null = null;
+  private _barSnapTop: number | null = null;
 
   mount(): void {
     // 重複防止
@@ -33,15 +40,16 @@ export class FloatingTimer {
 
   private _loadVisibility(): void {
     chrome.storage.local.get(STORAGE_KEYS.SETTINGS).then((result) => {
-      const settings = result[STORAGE_KEYS.SETTINGS] as { showFloatingTimer?: boolean } | undefined;
+      const settings = result[STORAGE_KEYS.SETTINGS] as { showFloatingTimer?: boolean; floatingTimerCollapseToCorner?: boolean } | undefined;
       this._visible = settings?.showFloatingTimer ?? true;
+      this._collapseToCorner = settings?.floatingTimerCollapseToCorner ?? false;
       this._applyVisibility();
     }).catch(() => { /* context invalidated */ });
   }
 
   private _applyVisibility(): void {
     if (this._host) {
-      this._host.style.display = this._visible ? "" : "none";
+      this._host.style.display = (this._visible && !this._dismissed) ? "" : "none";
     }
   }
 
@@ -56,6 +64,7 @@ export class FloatingTimer {
   setTaskKey(taskKey: string | null, meta: JiraTaskMeta | null): void {
     this._currentTaskKey = taskKey;
     this._currentMeta = meta;
+    this._applyVisibility();
     this._renderWidget();
   }
 
@@ -94,8 +103,9 @@ export class FloatingTimer {
         this._renderWidget();
       }
       if (STORAGE_KEYS.SETTINGS in changes) {
-        const settings = changes[STORAGE_KEYS.SETTINGS]?.newValue as { showFloatingTimer?: boolean } | undefined;
+        const settings = changes[STORAGE_KEYS.SETTINGS]?.newValue as { showFloatingTimer?: boolean; floatingTimerCollapseToCorner?: boolean } | undefined;
         this._visible = settings?.showFloatingTimer ?? true;
+        this._collapseToCorner = settings?.floatingTimerCollapseToCorner ?? false;
         this._applyVisibility();
       }
     };
@@ -146,173 +156,255 @@ export class FloatingTimer {
     const elapsed = this._activeTimer ? formatDurationClock(Date.now() - this._activeTimer.startedAt) : "00:00:00";
     const defaultActivity: ActivityType = this._activeTimer?.activityType ?? "implementation";
 
-    this._shadow.innerHTML = `
+    const positionStyle = this._collapsed
+      ? (this._collapseToCorner
+          ? `bottom: 24px; right: 24px; top: auto; left: auto;`
+          : (this._barSnapTop !== null
+              ? `top: ${this._barSnapTop}px; left: ${this._barSnapLeft ?? 0}px; bottom: auto; right: auto;`
+              : `bottom: 24px; right: 24px;`))
+      : (this._posX !== null
+          ? `top: ${this._posY}px; left: ${this._posX}px; bottom: auto; right: auto;`
+          : `bottom: 24px; right: 24px;`);
+
+    const commonStyle = `
       <style>
-        :host {
-          all: initial;
-        }
+        :host { all: initial; }
         #tr-widget {
           position: fixed;
-          bottom: 24px;
-          right: 24px;
           z-index: 9999;
           background: #fff;
           border: 1px solid #dfe1e6;
           border-radius: 8px;
           box-shadow: 0 4px 16px rgba(0,0,0,0.18);
-          padding: 14px 16px;
-          min-width: 220px;
           font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
           font-size: 13px;
           color: #172b4d;
           user-select: none;
         }
-        #tr-header {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          margin-bottom: 8px;
-        }
-        #tr-title {
-          font-weight: 600;
-          font-size: 12px;
-          color: #5e6c84;
-          text-transform: uppercase;
-          letter-spacing: 0.04em;
-        }
-        #tr-task-key {
-          font-weight: 700;
-          font-size: 14px;
-          color: #0052cc;
-          margin-bottom: 6px;
-        }
-        #tr-task-title {
-          font-size: 12px;
-          color: #5e6c84;
-          margin-bottom: 8px;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          max-width: 240px;
-        }
-        #tr-elapsed {
-          font-size: 22px;
-          font-weight: 700;
-          font-variant-numeric: tabular-nums;
-          letter-spacing: 0.02em;
-          color: #172b4d;
-          margin-bottom: 8px;
-          text-align: center;
-        }
-        #tr-activity-row {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          margin-bottom: 10px;
-        }
-        #tr-activity-label {
-          font-size: 12px;
-          color: #5e6c84;
-          white-space: nowrap;
-        }
-        #tr-activity-select {
-          flex: 1;
-          padding: 4px 6px;
-          border: 1px solid #dfe1e6;
-          border-radius: 4px;
-          font-size: 12px;
-          background: #fafbfc;
-          cursor: pointer;
-        }
-        #tr-buttons {
-          display: flex;
-          gap: 6px;
-        }
-        .tr-btn {
-          flex: 1;
-          padding: 6px 10px;
+        .tr-icon-btn {
+          background: none;
           border: none;
-          border-radius: 4px;
-          font-size: 12px;
-          font-weight: 600;
           cursor: pointer;
-          transition: background 0.15s;
-        }
-        .tr-btn-start {
-          background: #0052cc;
-          color: #fff;
-        }
-        .tr-btn-start:hover {
-          background: #0065ff;
-        }
-        .tr-btn-stop {
-          background: #de350b;
-          color: #fff;
-        }
-        .tr-btn-stop:hover {
-          background: #ff5630;
-        }
-        .tr-btn-switch {
-          background: #ff991f;
-          color: #fff;
-        }
-        .tr-btn-switch:hover {
-          background: #ffab00;
-        }
-        #tr-other-task-notice {
-          font-size: 12px;
-          color: #ff5630;
-          margin-bottom: 8px;
-          padding: 6px 8px;
-          background: #ffebe6;
-          border-radius: 4px;
-        }
-        #tr-no-task {
           color: #5e6c84;
-          font-size: 12px;
-          text-align: center;
-          padding: 8px 0;
+          font-size: 15px;
+          line-height: 1;
+          padding: 2px 5px;
+          border-radius: 4px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .tr-icon-btn:hover {
+          background: #f4f5f7;
+          color: #172b4d;
         }
       </style>
-      <div id="tr-widget">
-        <div id="tr-header">
-          <span id="tr-title">TimeRabbit</span>
-        </div>
-        ${this._currentTaskKey === null
-          ? `<div id="tr-no-task">Jiraタスクページを開いてください</div>`
-          : `
-          <div id="tr-task-key">${this._currentTaskKey}</div>
-          ${this._currentMeta ? `<div id="tr-task-title">${this._currentMeta.taskTitle}</div>` : ""}
-          ${isOtherTask
-            ? `<div id="tr-other-task-notice">他のタスクを計測中: ${this._activeTimer!.taskKey}</div>`
-            : ""
-          }
-          <div id="tr-elapsed">${isCurrentTask ? elapsed : "00:00:00"}</div>
-          <div id="tr-activity-row">
-            <span id="tr-activity-label">種別:</span>
-            <select id="tr-activity-select">
-              ${this._getActivityOptions(defaultActivity)}
-            </select>
-          </div>
-          <div id="tr-buttons">
-            ${isCurrentTask
-              ? `
-                <button class="tr-btn tr-btn-switch" id="tr-btn-switch">切替</button>
-                <button class="tr-btn tr-btn-stop" id="tr-btn-stop">停止</button>
-              `
-              : `<button class="tr-btn tr-btn-start" id="tr-btn-start">開始</button>`
-            }
-          </div>
-          `
-        }
-      </div>
     `;
+
+    if (this._collapsed) {
+      const isRunning = this._activeTimer !== null;
+      this._shadow.innerHTML = `
+        ${commonStyle}
+        <div id="tr-widget" style="${positionStyle} padding: 8px 12px; display: flex; align-items: center; gap: 10px; min-width: 0; cursor: grab;">
+          <span style="font-weight: 600; font-size: 11px; color: #5e6c84; text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap;">TimeRabbit</span>
+          ${isRunning ? `<span style="width: 7px; height: 7px; border-radius: 50%; background: #36b37e; flex-shrink: 0;"></span>` : ""}
+          <span id="tr-elapsed" style="font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap;">${elapsed}</span>
+          <button class="tr-icon-btn" id="tr-btn-expand" title="展開">＋</button>
+          <button class="tr-icon-btn" id="tr-btn-close" title="非表示">✕</button>
+        </div>
+      `;
+    } else {
+      this._shadow.innerHTML = `
+        ${commonStyle}
+        <style>
+          #tr-widget { padding: 14px 16px; min-width: 220px; }
+          #tr-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            cursor: grab;
+          }
+          #tr-header:active { cursor: grabbing; }
+          #tr-header-actions { cursor: default; }
+          #tr-title {
+            font-weight: 600;
+            font-size: 12px;
+            color: #5e6c84;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+          }
+          #tr-header-actions { display: flex; align-items: center; gap: 2px; }
+          #tr-task-key {
+            font-weight: 700;
+            font-size: 14px;
+            color: #0052cc;
+            margin-bottom: 6px;
+          }
+          #tr-task-title {
+            font-size: 12px;
+            color: #5e6c84;
+            margin-bottom: 8px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 240px;
+          }
+          #tr-elapsed {
+            font-size: 22px;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: 0.02em;
+            color: #172b4d;
+            margin-bottom: 8px;
+            text-align: center;
+          }
+          #tr-activity-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+          }
+          #tr-activity-label { font-size: 12px; color: #5e6c84; white-space: nowrap; }
+          #tr-activity-select {
+            flex: 1;
+            padding: 4px 6px;
+            border: 1px solid #dfe1e6;
+            border-radius: 4px;
+            font-size: 12px;
+            background: #fafbfc;
+            cursor: pointer;
+          }
+          #tr-buttons { display: flex; gap: 6px; }
+          .tr-btn {
+            flex: 1;
+            padding: 6px 10px;
+            border: none;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.15s;
+          }
+          .tr-btn-start { background: #0052cc; color: #fff; }
+          .tr-btn-start:hover { background: #0065ff; }
+          .tr-btn-stop { background: #de350b; color: #fff; }
+          .tr-btn-stop:hover { background: #ff5630; }
+          .tr-btn-switch { background: #ff991f; color: #fff; }
+          .tr-btn-switch:hover { background: #ffab00; }
+          #tr-other-task-notice {
+            font-size: 12px;
+            color: #ff5630;
+            margin-bottom: 8px;
+            padding: 6px 8px;
+            background: #ffebe6;
+            border-radius: 4px;
+          }
+          #tr-no-task { color: #5e6c84; font-size: 12px; text-align: center; padding: 8px 0; }
+        </style>
+        <div id="tr-widget" style="${positionStyle}">
+          <div id="tr-header">
+            <span id="tr-title">TimeRabbit</span>
+            <div id="tr-header-actions">
+              <button class="tr-icon-btn" id="tr-btn-collapse" title="最小化">－</button>
+              <button class="tr-icon-btn" id="tr-btn-close" title="非表示">✕</button>
+            </div>
+          </div>
+          ${this._currentTaskKey === null
+            ? `<div id="tr-no-task">Jiraタスクページを開いてください</div>`
+            : `
+            <div id="tr-task-key">${this._currentTaskKey}</div>
+            ${this._currentMeta ? `<div id="tr-task-title">${this._currentMeta.taskTitle}</div>` : ""}
+            ${isOtherTask
+              ? `<div id="tr-other-task-notice">他のタスクを計測中: ${this._activeTimer!.taskKey}</div>`
+              : ""
+            }
+            <div id="tr-elapsed">${isCurrentTask ? elapsed : "00:00:00"}</div>
+            <div id="tr-activity-row">
+              <span id="tr-activity-label">種別:</span>
+              <select id="tr-activity-select">
+                ${this._getActivityOptions(defaultActivity)}
+              </select>
+            </div>
+            <div id="tr-buttons">
+              ${isCurrentTask
+                ? `
+                  <button class="tr-btn tr-btn-switch" id="tr-btn-switch">切替</button>
+                  <button class="tr-btn tr-btn-stop" id="tr-btn-stop">停止</button>
+                `
+                : `<button class="tr-btn tr-btn-start" id="tr-btn-start">開始</button>`
+              }
+            </div>
+            `
+          }
+        </div>
+      `;
+    }
 
     this._bindEvents();
   }
 
   private _bindEvents(): void {
     if (!this._shadow) return;
+
+    const dragHandle = this._shadow.getElementById(this._collapsed ? "tr-widget" : "tr-header");
+    dragHandle?.addEventListener("mousedown", (e: Event) => {
+      const me = e as MouseEvent;
+      if ((me.target as HTMLElement).closest("button, select")) return;
+
+      const widget = this._shadow!.getElementById("tr-widget")!;
+      const rect = widget.getBoundingClientRect();
+      const offsetX = me.clientX - rect.left;
+      const offsetY = me.clientY - rect.top;
+
+      const onMouseMove = (me2: MouseEvent) => {
+        const newX = Math.max(0, Math.min(me2.clientX - offsetX, window.innerWidth - rect.width));
+        const newY = Math.max(0, Math.min(me2.clientY - offsetY, window.innerHeight - rect.height));
+        if (this._collapsed) {
+          this._barSnapLeft = newX;
+          this._barSnapTop = newY;
+          widget.style.left = `${newX}px`;
+          widget.style.top = `${newY}px`;
+          widget.style.right = "auto";
+          widget.style.bottom = "auto";
+        } else {
+          this._posX = newX;
+          this._posY = newY;
+          widget.style.left = `${newX}px`;
+          widget.style.top = `${newY}px`;
+          widget.style.right = "auto";
+          widget.style.bottom = "auto";
+        }
+      };
+
+      const onMouseUp = () => {
+        document.removeEventListener("mousemove", onMouseMove);
+        document.removeEventListener("mouseup", onMouseUp);
+      };
+
+      document.addEventListener("mousemove", onMouseMove);
+      document.addEventListener("mouseup", onMouseUp);
+      me.preventDefault();
+    });
+
+    this._shadow.getElementById("tr-btn-collapse")?.addEventListener("click", () => {
+      const widget = this._shadow!.getElementById("tr-widget")!;
+      const rect = widget.getBoundingClientRect();
+      this._barSnapLeft = rect.left;
+      this._barSnapTop = rect.top;
+      this._collapsed = true;
+      this._renderWidget();
+    });
+
+    this._shadow.getElementById("tr-btn-expand")?.addEventListener("click", () => {
+      this._collapsed = false;
+      this._renderWidget();
+    });
+
+    this._shadow.getElementById("tr-btn-close")?.addEventListener("click", () => {
+      this._dismissed = true;
+      this._applyVisibility();
+    });
 
     const startBtn = this._shadow.getElementById("tr-btn-start");
     const stopBtn = this._shadow.getElementById("tr-btn-stop");

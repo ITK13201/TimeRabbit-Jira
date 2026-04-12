@@ -22,6 +22,8 @@ npx tsc --noEmit                            # 型チェックのみ
 
 ビルド後、Chrome の `chrome://extensions` で `dist/` フォルダを「パッケージ化されていない拡張機能を読み込む」で読み込む。
 
+> **Note**: 現時点でテストファイルは存在しない（vitest は設定済み）。
+
 ## アーキテクチャ概要
 
 Manifest V3 の Chrome 拡張。4つのコンテキストが `chrome.runtime.sendMessage` / `chrome.storage.local` で通信する。
@@ -35,6 +37,22 @@ Content Script  ──sendMessage──▶  Service Worker (Background)
 ```
 
 パスエイリアス: `@/*` → `src/*`
+
+ビルドは `vite-plugin-web-extension` が `manifest.json` を起点として全エントリ（background / content / popup / dashboard）を自動解決する。**Tailwind CSS v4** を使用（`@tailwindcss/vite` プラグイン経由）。
+
+## メッセージ送受信
+
+`src/shared/messages.ts` の型付き `sendMessage()` ラッパーを使う。直接 `chrome.runtime.sendMessage` を呼び出すと型安全性が失われる。
+
+```typescript
+import { sendMessage } from "@/shared/messages";
+
+// Popup / Dashboard → Service Worker
+const state = await sendMessage({ type: "GET_STATE" });
+
+// Popup → Content Script（tabId 必須）
+const task = await sendMessage({ type: "GET_CURRENT_TASK" }, tabId);
+```
 
 ## ストレージキー（`src/shared/utils/storage.ts`）
 
