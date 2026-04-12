@@ -1,0 +1,30 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended"
+  ],
+  "packageManager": "pnpm",
+  "labels": ["dependencies"],
+  "assignees": ["ITK13201"],
+  "timezone": "Asia/Tokyo",
+  "schedule": ["before 9am on Monday"],
+  "dependencyDashboard": true,
+  "prBodyColumns": ["Package", "Type", "Update", "Change"],
+  "commitMessagePrefix": "chore(deps):",
+  "commitMessageAction": "update",
+  "packageRules": [
+    {
+      "matchDepTypes": ["devDependencies"],
+      "automerge": false
+    },
+    {
+      "matchDepTypes": ["dependencies"],
+      "automerge": false
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "groupName": "GitHub Actions",
+      "automerge": false
+    }
+  ]
+}
